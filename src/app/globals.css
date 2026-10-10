@@ -79,7 +79,7 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .notebook-note { padding: 16px; border-radius: 9px; background: rgba(253,251,249,.93); color: var(--charcoal); transform: rotate(-1deg); }
 .notebook-note span { font-family: var(--deva); font-size: 19px; }
 .notebook-note p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
-.scribble-label { position: absolute; top: 32px; left: -20px; font-size: 20px; transform: rotate(-7deg); }
+.scribble-label { position: absolute; top: -18px; left: 24px; z-index: 5; white-space: nowrap; font-size: 20px; transform: rotate(-5deg); }
 .sticker { position: absolute; z-index: 3; display: grid; place-items: center; border: 2px solid var(--charcoal); }
 .sticker-spark { top: 3%; right: 1%; width: 62px; height: 62px; border-radius: 18px; color: var(--charcoal); background: #ff66cf; transform: rotate(11deg); }
 .sticker-quote { right: -1%; bottom: 7%; width: 58px; height: 58px; border-radius: 50% 50% 50% 10px; color: var(--charcoal); background: #3b82f6; transform: rotate(-8deg); }

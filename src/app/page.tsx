@@ -27,7 +27,7 @@ export default function HomePage() {
           <span className="sticker sticker-spark"><Sparkles size={24} /></span>
           <span className="scribble-label">today&apos;s shloka <span aria-hidden="true">↘</span></span>
           <article className="study-notebook">
-            <div className="notebook-top"><span>सamhita pathan</span><span>01 / 30</span></div>
+            <div className="notebook-top"><span>samhita pathan</span><span>01 / 30</span></div>
             <p className="mini-reference">{demoShloka.reference}</p>
             <blockquote lang="sa">अथातो दीर्घञ्जीवितीयम्<br />अध्यायं व्याख्यास्यामः ।</blockquote>
             <div className="mini-player"><Link href="/study" aria-label="Open the study preview"><AudioLines size={19} /></Link><span className="wave" aria-hidden="true">▂▅▃▇▄▆▂▅▇▃▆▂</span><span>study preview</span></div>
