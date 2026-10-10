@@ -43,7 +43,7 @@ ${transcription ? `Student Transcribed Recitation (via Gemini Transcribe): ${tra
 Be constructive and uncertainty-aware. Assess audible completeness, pacing, long/short vowel care, conjunct clarity, and pauses.
 Return JSON only: score (0-100 integer), summary, strengths (0-4 strings), improvements (0-4 strings).`;
 
-      const evalModel = process.env.GEMINI_EVAL_MODEL || "gemini-2.5-flash";
+      const evalModel = process.env.GEMINI_EVAL_MODEL || "gemini-3.8-flash";
       const evalResponse = await ai.models.generateContent({
         model: evalModel,
         contents: transcription
@@ -59,7 +59,7 @@ Return JSON only: score (0-100 integer), summary, strengths (0-4 strings), impro
   }
 
   try {
-    const fallbackModel = model.includes("transcribe") ? "gemini-2.5-flash" : model;
+    const fallbackModel = model.includes("transcribe") ? "gemini-3.8-flash" : model;
     const response = await ai.models.generateContent({
       model: fallbackModel,
       contents: [{ text: prompt }, { inlineData: { mimeType: input.mimeType, data: Buffer.from(input.audio).toString("base64") } }],
