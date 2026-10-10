@@ -28,6 +28,7 @@ type AiContent = { summary: string; keyIdeas: string[]; studyQuestion: string };
 export function StudyWorkspace({ user }: { user: SafeUser | null }) {
   const [active, setActive] = useState<Step>("listen");
   const [complete, setComplete] = useState<Step[]>([]);
+  const [completedView, setCompletedView] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [audio, setAudio] = useState<AudioAsset>(null);
   const [audioLoading, setAudioLoading] = useState(true);
@@ -67,7 +68,9 @@ export function StudyWorkspace({ user }: { user: SafeUser | null }) {
   }, []);
 
   function moveTo(step: Step) {
-    setActive(step); setDrawer(false);
+    setActive(step);
+    setCompletedView(false);
+    setDrawer(false);
   }
   function handleLanguageChange(nextLang: "en" | "hi" | "mr") {
     setLanguage(nextLang);
@@ -95,8 +98,16 @@ export function StudyWorkspace({ user }: { user: SafeUser | null }) {
   function continueNext() {
     const nextComplete = complete.includes(active) ? complete : [...complete, active];
     const index = steps.findIndex((step) => step.id === active);
+    if (index === steps.length - 1) {
+      setComplete(nextComplete);
+      setCompletedView(true);
+      void saveProgress(nextComplete, active);
+      return;
+    }
     const nextActive = index < steps.length - 1 ? steps[index + 1].id : active;
-    setComplete(nextComplete); setActive(nextActive);
+    setComplete(nextComplete);
+    setActive(nextActive);
+    setCompletedView(false);
     void saveProgress(nextComplete, nextActive);
   }
   async function enrich(targetLang: "en" | "hi" | "mr" = language) {
@@ -124,7 +135,15 @@ export function StudyWorkspace({ user }: { user: SafeUser | null }) {
         <button className="icon-button mobile-only" onClick={() => setDrawer(true)} aria-label="Open library" aria-expanded={drawer} aria-controls="study-library"><Menu size={20} /></button>
         <Link className="study-brand" href="/"><BookOpenText size={22} /><span>samhita <strong>pathan</strong></span></Link>
         <div className="study-context"><span>Charaka Saṃhitā</span><ChevronRight size={14} /><span>Sūtrasthāna</span><ChevronRight size={14} /><strong>1.1</strong></div>
-        {user ? <span className="user-chip"><CircleUserRound size={17} /> {user.name.split(" ")[0]}</span> : <span className="user-chip"><Sparkles size={16} /> student study</span>}
+        {user ? (
+          <Link href="/settings" className="user-chip" aria-label="Settings">
+            <CircleUserRound size={17} /> {user.name.split(" ")[0]}
+          </Link>
+        ) : (
+          <Link href="/settings" className="user-chip" aria-label="Settings">
+            <Sparkles size={16} /> student study
+          </Link>
+        )}
       </header>
 
       <aside className={`library-rail ${drawer ? "open" : ""}`} id="study-library" aria-label="Samhita library" aria-hidden={!drawer && undefined}>
@@ -148,23 +167,62 @@ export function StudyWorkspace({ user }: { user: SafeUser | null }) {
         <nav className="step-rail" aria-label="Learning steps">{steps.map((step, index) => <button className={`${active === step.id ? "active" : ""} ${complete.includes(step.id) ? "complete" : ""}`} onClick={() => moveTo(step.id)} key={step.id}><span>{complete.includes(step.id) ? <Check size={14} /> : index + 1}</span><small>{step.label}</small></button>)}</nav>
 
         <section className="learning-panel" aria-live="polite">
-          {active === "listen" && <ListenStep audio={audio} loading={audioLoading} />}
-          {active === "recite" && <ReciteStep />}
-          {active === "break-down" && <BreakdownStep language={language} />}
-          {active === "understand" && (
-            <UnderstandStep
-              language={language}
-              onLanguageChange={handleLanguageChange}
-              aiContent={aiContents[language] ?? null}
-              aiState={aiState}
-              aiErrorMessage={aiErrorMessage}
-              enrich={() => void enrich(language)}
-            />
+          {completedView ? (
+            <div className="completion-card">
+              <div className="completion-badge">
+                <Sparkles size={38} />
+              </div>
+              <p className="eyebrow">milestone reached · 100% complete</p>
+              <h2>shloka completed.</h2>
+              <p className="completion-sub">
+                Congratulations! You have completed all 7 learning steps for <strong>{demoShloka.reference}</strong>.
+              </p>
+              <blockquote lang="sa" className="completion-shloka">
+                {demoShloka.sanskrit}
+              </blockquote>
+              <div className="completion-actions">
+                <button className="ink-button" onClick={() => moveTo("recite")}>
+                  <Mic2 size={16} /> practice recitation again
+                </button>
+                <button className="ink-button" onClick={() => moveTo("listen")}>
+                  <RotateCcw size={16} /> review from beginning
+                </button>
+                <Link className="text-link" href="/">
+                  <Home size={16} /> return to home
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              {active === "listen" && <ListenStep audio={audio} loading={audioLoading} />}
+              {active === "recite" && <ReciteStep />}
+              {active === "break-down" && <BreakdownStep language={language} />}
+              {active === "understand" && (
+                <UnderstandStep
+                  language={language}
+                  onLanguageChange={handleLanguageChange}
+                  aiContent={aiContents[language] ?? null}
+                  aiState={aiState}
+                  aiErrorMessage={aiErrorMessage}
+                  enrich={() => void enrich(language)}
+                />
+              )}
+              {active === "visualize" && <VisualizeStep language={language} />}
+              {active === "connect" && <ConnectStep language={language} />}
+              {active === "quiz" && <QuizStep />}
+              <div className="panel-footer">
+                <div>
+                  <span className="marker-note">step {steps.findIndex((step) => step.id === active) + 1} of 7</span>
+                  <p aria-live="polite">
+                    {progressState === "saving" ? "Saving your progress…" : progressState === "error" ? "Progress could not be saved." : "Your progress is saved on this device."}
+                  </p>
+                </div>
+                <button className="ink-button" onClick={continueNext}>
+                  {active === "quiz" ? "complete this shloka" : "continue"} <ArrowRight size={17} />
+                </button>
+              </div>
+            </>
           )}
-          {active === "visualize" && <VisualizeStep language={language} />}
-          {active === "connect" && <ConnectStep language={language} />}
-          {active === "quiz" && <QuizStep />}
-          <div className="panel-footer"><div><span className="marker-note">step {steps.findIndex((step) => step.id === active) + 1} of 7</span><p aria-live="polite">{progressState === "saving" ? "Saving your progress…" : progressState === "error" ? "Progress could not be saved." : "Your progress is saved on this device."}</p></div><button className="ink-button" onClick={continueNext}>{active === "quiz" ? "complete this shloka" : "continue"} <ArrowRight size={17} /></button></div>
         </section>
       </main>
 
