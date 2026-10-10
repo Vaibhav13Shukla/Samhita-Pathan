@@ -15,12 +15,18 @@ export async function POST(request: Request, _context: { params: Promise<{ id: s
     }
 
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const referenceText = demoShloka.sanskrit;
+    const padaParam = form.get("pada");
+    const padaNum = padaParam ? Number(padaParam) : null;
+    const referenceText =
+      padaNum && padaNum >= 1 && padaNum <= demoShloka.padas.length
+        ? demoShloka.padas[padaNum - 1].sanskrit
+        : demoShloka.sanskrit;
 
     const feedback = await evaluateRecitation({ referenceText, audio: bytes, mimeType: file.type });
     return Response.json({
       status: "completed",
       score: feedback.score,
+      sandhiNormalizedScore: feedback.sandhiNormalizedScore,
       feedback,
     });
   } catch (error) {

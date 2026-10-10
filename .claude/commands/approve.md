@@ -1,1 +1,0 @@
-Record explicit human approval for `$ARGUMENTS` in `docs/TASKS.md` with date and scope. Valid gates: `prd`, `architecture`, `design`, `audio-content`, `spec <id>`, `deploy`. Verify prerequisite artifacts exist, then announce the next permitted phase. Approval never waives tests, security, content QC or deployment checks.

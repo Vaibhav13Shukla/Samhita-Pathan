@@ -189,12 +189,20 @@ function ReciteStep() {
   const chunks = useRef<Blob[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const mounted = useRef(true);
+  const [selectedPada, setSelectedPada] = useState<number | null>(null);
   const [state, setState] = useState<"idle" | "recording" | "ready" | "denied" | "unsupported">("idle");
   const [submitState, setSubmitState] = useState<"idle" | "uploading" | "processing" | "completed" | "failed">("idle");
   const [seconds, setSeconds] = useState(0);
   const [preview, setPreview] = useState<string | null>(null);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
-  const [feedback, setFeedback] = useState<{ score: number | null; summary: string; strengths: string[]; improvements: string[] } | null>(null);
+  const [feedback, setFeedback] = useState<{
+    score: number | null;
+    sandhiNormalizedScore?: number;
+    summary: string;
+    strengths: string[];
+    improvements: string[];
+    aksharas?: Array<{ akshara: string; status: "accurate" | "acceptable" | "needs-attention" | "unclear"; note?: string }>;
+  } | null>(null);
   const [submitError, setSubmitError] = useState("");
 
   useEffect(() => () => {
@@ -230,9 +238,27 @@ function ReciteStep() {
       await new Promise((resolve) => setTimeout(resolve, 2500));
       const response = await fetch(`/api/recitation-attempts/${attemptId}`, { cache: "no-store" });
       if (!response.ok) continue;
-      const body = await response.json() as { attempt: { status: "processing" | "completed" | "failed"; score: number | null; feedback: { summary: string; strengths: string[]; improvements: string[] } | null } };
+      const body = await response.json() as {
+        attempt: {
+          status: "processing" | "completed" | "failed";
+          score: number | null;
+          sandhiNormalizedScore?: number;
+          feedback: {
+            summary: string;
+            strengths: string[];
+            improvements: string[];
+            aksharas?: Array<{ akshara: string; status: "accurate" | "acceptable" | "needs-attention" | "unclear"; note?: string }>;
+          } | null;
+        };
+      };
       if (body.attempt.status === "completed" && body.attempt.feedback) {
-        setFeedback({ score: body.attempt.score, ...body.attempt.feedback }); setSubmitState("completed"); return;
+        setFeedback({
+          score: body.attempt.score,
+          sandhiNormalizedScore: body.attempt.sandhiNormalizedScore,
+          ...body.attempt.feedback,
+        });
+        setSubmitState("completed");
+        return;
       }
       if (body.attempt.status === "failed") { setSubmitState("failed"); setSubmitError("Feedback could not be completed. Record again or try shortly."); return; }
     }
@@ -243,12 +269,31 @@ function ReciteStep() {
     setSubmitError(""); setSubmitState("processing");
     const form = new FormData();
     form.append("audio", recordedBlob, `recitation.${recordedBlob.type.includes("webm") ? "webm" : "audio"}`);
+    if (selectedPada !== null) {
+      form.append("pada", String(selectedPada));
+    }
     try {
       const response = await fetch(`/api/shlokas/${demoShloka.id}/recitation-attempts`, { method: "POST", body: form });
-      const body = await response.json() as { status?: string; score?: number; feedback?: { summary: string; strengths: string[]; improvements: string[] }; attemptId?: string; error?: { message?: string } };
+      const body = await response.json() as {
+        status?: string;
+        score?: number;
+        sandhiNormalizedScore?: number;
+        feedback?: {
+          summary: string;
+          strengths: string[];
+          improvements: string[];
+          aksharas?: Array<{ akshara: string; status: "accurate" | "acceptable" | "needs-attention" | "unclear"; note?: string }>;
+        };
+        attemptId?: string;
+        error?: { message?: string };
+      };
       if (!response.ok) throw new Error(body.error?.message || "We could not evaluate this recording.");
       if (body.feedback) {
-        setFeedback({ score: body.score ?? null, ...body.feedback });
+        setFeedback({
+          score: body.score ?? null,
+          sandhiNormalizedScore: body.sandhiNormalizedScore,
+          ...body.feedback,
+        });
         setSubmitState("completed");
         return;
       }
@@ -260,17 +305,166 @@ function ReciteStep() {
     } catch (error) { setSubmitState("failed"); setSubmitError(error instanceof Error ? error.message : "We could not submit this recording."); }
   }
 
-  return <div className="recite-step">
-    <div className={`recorder-orb ${state === "recording" ? "recording" : ""}`}>{state === "recording" ? <span>{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</span> : submitState === "uploading" || submitState === "processing" ? <LoaderCircle className="spin" size={38} /> : <Mic2 size={38} />}</div>
-    <div className="step-copy centered"><p className="eyebrow">your recitation</p><h2>{state === "recording" ? "we’re listening." : submitState === "processing" ? "listening closely to your attempt." : submitState === "completed" ? "your practice note is ready." : state === "ready" ? "listen back before you send." : "recite at your own pace."}</h2><p>{state === "idle" && "Find a quiet place. Your recording is evaluated directly and is never used as the reference voice."}{state === "recording" && "Speak the complete shloka, then stop when you are ready."}{submitState === "processing" && "Gemini 3.5 Transcribe is assessing your recitation. This takes just a moment."}</p></div>
-    {state === "idle" && <button className="ink-button" onClick={start}><Mic2 size={17} /> start recording</button>}
-    {state === "recording" && <button className="ink-button" onClick={stop}><Square size={16} /> stop recording</button>}
-    {state === "ready" && preview && submitState !== "completed" && <><audio className="recording-preview" controls src={preview} /><div className="recorder-actions"><button className="text-link" onClick={reset}><RotateCcw size={15} /> record again</button><button className="ink-button" onClick={submit} disabled={submitState === "uploading" || submitState === "processing"}>{submitState === "uploading" ? "uploading…" : submitState === "processing" ? "evaluating recitation…" : "send for feedback"} <Sparkles size={16} /></button></div></>}
-    {submitError && <div className="permission-message" role="alert" aria-live="assertive"><h3>feedback is unavailable.</h3><p>{submitError}</p><button className="text-link" onClick={() => setSubmitState("idle")}>try submission again</button></div>}
-    {submitState === "completed" && feedback && <div className="feedback-card" role="status" aria-live="polite"><span className="feedback-score">{feedback.score ?? "—"}<small>/100</small></span><div><h3>{feedback.summary}</h3>{feedback.strengths.length > 0 && <p><strong>What carried well:</strong> {feedback.strengths.join(" · ")}</p>}{feedback.improvements.length > 0 && <p><strong>Try next:</strong> {feedback.improvements.join(" · ")}</p>}<button className="text-link" onClick={reset}><RotateCcw size={15} /> practice once more</button></div></div>}
-    {state === "denied" && <div className="permission-message" role="alert" aria-live="assertive"><h3>microphone access is off.</h3><p>Open your browser&apos;s site settings, allow Microphone, then try again. You can still use every reading step.</p><button className="text-link" onClick={() => setState("idle")}>try again</button></div>}
-    {state === "unsupported" && <div className="permission-message" role="alert" aria-live="assertive"><h3>recording is not supported here.</h3><p>Try a current version of Chrome, Safari, Firefox, or Edge on a secure connection.</p></div>}
-  </div>;
+  const currentTargetPada = selectedPada !== null && demoShloka.padas ? demoShloka.padas[selectedPada - 1] : null;
+
+  return (
+    <div className="recite-step">
+      <div className="pada-selector" role="group" aria-label="Recitation practice unit">
+        <button
+          className={selectedPada === null ? "active" : ""}
+          onClick={() => { setSelectedPada(null); reset(); }}
+        >
+          Full Shloka
+        </button>
+        {demoShloka.padas?.map((p) => (
+          <button
+            key={p.number}
+            className={selectedPada === p.number ? "active" : ""}
+            onClick={() => { setSelectedPada(p.number); reset(); }}
+          >
+            Pāda {p.number}
+          </button>
+        ))}
+      </div>
+
+      {currentTargetPada && (
+        <div className="pada-target-box" lang="sa">
+          {currentTargetPada.sanskrit}
+        </div>
+      )}
+
+      <div className={`recorder-orb ${state === "recording" ? "recording" : ""}`}>
+        {state === "recording" ? (
+          <span>{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</span>
+        ) : submitState === "uploading" || submitState === "processing" ? (
+          <LoaderCircle className="spin" size={38} />
+        ) : (
+          <Mic2 size={38} />
+        )}
+      </div>
+
+      <div className="step-copy centered">
+        <p className="eyebrow">{currentTargetPada ? `pāda ${currentTargetPada.number} practice` : "your recitation"}</p>
+        <h2>
+          {state === "recording"
+            ? "we’re listening."
+            : submitState === "processing"
+            ? "evaluating your pronunciation…"
+            : submitState === "completed"
+            ? "your practice note is ready."
+            : state === "ready"
+            ? "listen back before you send."
+            : "recite at your own pace."}
+        </h2>
+        <p>
+          {state === "idle" && (currentTargetPada ? `Speak “${currentTargetPada.sanskrit}” clearly into your microphone.` : "Find a quiet place. Your recording is evaluated directly and is never used as the reference voice.")}
+          {state === "recording" && (currentTargetPada ? `Recite pāda ${currentTargetPada.number}, then stop when complete.` : "Speak the complete shloka, then stop when you are ready.")}
+          {submitState === "processing" && "Assessing pronunciation, vowel duration, and akshara boundaries…"}
+        </p>
+      </div>
+
+      {state === "idle" && (
+        <button className="ink-button" onClick={start}>
+          <Mic2 size={17} /> start recording
+        </button>
+      )}
+      {state === "recording" && (
+        <button className="ink-button" onClick={stop}>
+          <Square size={16} /> stop recording
+        </button>
+      )}
+      {state === "ready" && preview && submitState !== "completed" && (
+        <>
+          <audio className="recording-preview" controls src={preview} />
+          <div className="recorder-actions">
+            <button className="text-link" onClick={reset}>
+              <RotateCcw size={15} /> record again
+            </button>
+            <button
+              className="ink-button"
+              onClick={submit}
+              disabled={submitState === "uploading" || submitState === "processing"}
+            >
+              {submitState === "uploading"
+                ? "uploading…"
+                : submitState === "processing"
+                ? "evaluating recitation…"
+                : "send for feedback"}{" "}
+              <Sparkles size={16} />
+            </button>
+          </div>
+        </>
+      )}
+      {submitError && (
+        <div className="permission-message" role="alert" aria-live="assertive">
+          <h3>feedback is unavailable.</h3>
+          <p>{submitError}</p>
+          <button className="text-link" onClick={() => setSubmitState("idle")}>
+            try submission again
+          </button>
+        </div>
+      )}
+      {submitState === "completed" && feedback && (
+        <div className="feedback-card" role="status" aria-live="polite">
+          <div className="feedback-score">
+            <span>{feedback.score ?? "—"}<small>/100</small></span>
+            {feedback.sandhiNormalizedScore !== undefined && (
+              <span className="sub-metric" title="Sandhi-normalized phonological match">
+                {feedback.sandhiNormalizedScore}% match
+              </span>
+            )}
+          </div>
+          <div>
+            <h3>{feedback.summary}</h3>
+            {feedback.aksharas && feedback.aksharas.length > 0 && (
+              <div className="akshara-feedback-grid">
+                <p className="eyebrow">syllable verification · akshara</p>
+                <div className="akshara-chips">
+                  {feedback.aksharas.map((item, idx) => (
+                    <span
+                      key={idx}
+                      className={`akshara-chip ${item.status}`}
+                      title={item.note || item.status}
+                    >
+                      {item.akshara}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {feedback.strengths.length > 0 && (
+              <p>
+                <strong>What carried well:</strong> {feedback.strengths.join(" · ")}
+              </p>
+            )}
+            {feedback.improvements.length > 0 && (
+              <p>
+                <strong>Try next:</strong> {feedback.improvements.join(" · ")}
+              </p>
+            )}
+            <button className="text-link" onClick={reset}>
+              <RotateCcw size={15} /> practice once more
+            </button>
+          </div>
+        </div>
+      )}
+      {state === "denied" && (
+        <div className="permission-message" role="alert" aria-live="assertive">
+          <h3>microphone access is off.</h3>
+          <p>Open your browser&apos;s site settings, allow Microphone, then try again. You can still use every reading step.</p>
+          <button className="text-link" onClick={() => setState("idle")}>
+            try again
+          </button>
+        </div>
+      )}
+      {state === "unsupported" && (
+        <div className="permission-message" role="alert" aria-live="assertive">
+          <h3>recording is not supported here.</h3>
+          <p>Try a current version of Chrome, Safari, Firefox, or Edge on a secure connection.</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function BreakdownStep({ language }: { language: "en" | "hi" | "mr" }) {

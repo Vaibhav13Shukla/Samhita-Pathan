@@ -1,1 +1,0 @@
-Confirm PRD approval in `docs/TASKS.md`. Run `staff-system-architect` and `staff-product-designer` in parallel on separate documentation paths. Produce/update architecture, API, data model, threat assumptions, journey/state requirements and design-system acceptance. Reconcile interfaces, summarize risks, then stop for `/approve architecture` and `/approve design`.

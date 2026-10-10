@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
+import { defaultVerifier, AksharaAlignment } from "@/lib/sanskrit";
 import { GeminiServiceError } from "./explain";
 
 const feedbackSchema = z.object({
@@ -9,7 +10,10 @@ const feedbackSchema = z.object({
   improvements: z.array(z.string().min(2).max(240)).max(4),
 });
 
-export type RecitationFeedback = z.infer<typeof feedbackSchema>;
+export type RecitationFeedback = z.infer<typeof feedbackSchema> & {
+  sandhiNormalizedScore?: number;
+  aksharas?: AksharaAlignment[];
+};
 
 export async function evaluateRecitation(input: { referenceText: string; audio: Uint8Array; mimeType: string }): Promise<RecitationFeedback> {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -42,9 +46,12 @@ export async function evaluateRecitation(input: { referenceText: string; audio: 
         console.warn("transcribe_step_fallback", transcribeError instanceof Error ? transcribeError.message : transcribeError);
       }
 
+      // Compute deterministic phonological verification
+      const verification = defaultVerifier.verify(input.referenceText, transcription);
+
       const evalPrompt = `Evaluate this student's Sanskrit recitation against the written reference below.
 Reference: ${input.referenceText}
-${transcription ? `Student Transcribed Recitation (via Gemini Transcribe): ${transcription}` : "Audio recorded by student."}
+${transcription ? `Student Transcribed Recitation: ${transcription}` : "Audio recorded by student."}
 
 Be constructive and uncertainty-aware. Assess audible completeness, pacing, long/short vowel care, conjunct clarity, and pauses.
 Return JSON only: score (0-100 integer), summary, strengths (0-4 strings), improvements (0-4 strings).`;
@@ -59,10 +66,30 @@ Return JSON only: score (0-100 integer), summary, strengths (0-4 strings), impro
             config: { responseMimeType: "application/json" },
           });
           const parsed = feedbackSchema.safeParse(JSON.parse(evalResponse.text ?? ""));
-          if (parsed.success) return parsed.data;
+          if (parsed.success) {
+            return {
+              ...parsed.data,
+              // Blend AI pedagogical score with deterministic phonological verification
+              score: transcription ? Math.round((parsed.data.score + verification.score) / 2) : parsed.data.score,
+              sandhiNormalizedScore: verification.sandhiNormalizedScore,
+              aksharas: verification.aksharaAlignments,
+            };
+          }
         } catch (mErr) {
           console.warn(`eval_model_${evalModel}_failed`, mErr instanceof Error ? mErr.message : mErr);
         }
+      }
+
+      // If eval model failed but transcription succeeded, return verification directly
+      if (transcription) {
+        return {
+          score: verification.score,
+          sandhiNormalizedScore: verification.sandhiNormalizedScore,
+          summary: verification.summary,
+          strengths: verification.strengths,
+          improvements: verification.improvements,
+          aksharas: verification.aksharaAlignments,
+        };
       }
     } catch (pipelineError) {
       console.warn("transcribe_pipeline_falling_back_to_multimodal", pipelineError);
@@ -78,20 +105,30 @@ Return JSON only: score (0-100 integer), summary, strengths (0-4 strings), impro
         config: { responseMimeType: "application/json" },
       });
       const parsed = feedbackSchema.safeParse(JSON.parse(response.text ?? ""));
-      if (parsed.success) return parsed.data;
+      if (parsed.success) {
+        const verification = defaultVerifier.verify(input.referenceText, "");
+        return {
+          ...parsed.data,
+          sandhiNormalizedScore: parsed.data.score,
+          aksharas: verification.aksharaAlignments,
+        };
+      }
     } catch (error) {
       console.warn(`multimodal_${m}_failed`, error instanceof Error ? error.message : error);
     }
   }
 
   // If audio was inaudible or empty
+  const emptyVerification = defaultVerifier.verify(input.referenceText, "");
   return {
     score: 0,
-    summary: "We could not detect clear recitation audio in this recording. Please try reciting again.",
+    sandhiNormalizedScore: 0,
+    summary: "We could not detect clear recitation audio in this recording. Please try reciting again in a quiet room.",
     strengths: [],
     improvements: [
       "Ensure microphone access is allowed and speak closer to the mic.",
-      "Recite the shloka clearly in a quiet environment.",
+      "Recite the shloka clearly at a steady, measured pace.",
     ],
+    aksharas: emptyVerification.aksharaAlignments,
   };
 }

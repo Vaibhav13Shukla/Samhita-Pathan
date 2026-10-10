@@ -4,6 +4,32 @@ export const demoShloka = {
   meter: "Anuṣṭubh · meter review pending",
   sanskrit: "अथातो दीर्घञ्जीवितीयमध्यायं व्याख्यास्यामः ।\nइति ह स्माह भगवानात्रेयः ॥",
   transliteration: "athāto dīrghañjīvitīyam adhyāyaṃ vyākhyāsyāmaḥ · iti ha smāha bhagavān ātreyaḥ",
+  padas: [
+    {
+      number: 1,
+      sanskrit: "अथातो दीर्घञ्जीवितीयम्",
+      transliteration: "athāto dīrghañjīvitīyam",
+      meaning: "Now, concerning a long and wholesome life",
+      meaningHi: "अब, दीर्घ एवं हितकारी जीवन के उद्देश्य से",
+      meaningMr: "आता, दीर्घ आणि हितकारक आयुष्याच्या संदर्भात",
+    },
+    {
+      number: 2,
+      sanskrit: "अध्यायं व्याख्यास्यामः",
+      transliteration: "adhyāyaṃ vyākhyāsyāmaḥ",
+      meaning: "we shall explain the chapter",
+      meaningHi: "हम इस अध्याय की विस्तृत व्याख्या करेंगे",
+      meaningMr: "आम्ही या अध्यायाचे सविस्तर निरूपण करतो",
+    },
+    {
+      number: 3,
+      sanskrit: "इति ह स्माह भगवानात्रेयः",
+      transliteration: "iti ha smāha bhagavān ātreyaḥ",
+      meaning: "thus declared the revered sage Ātreya",
+      meaningHi: "ऐसा पूज्य भगवान आत्रेय ने उपदेश दिया",
+      meaningMr: "असे पूजनीय भगवान आत्रेयांनी सांगितले",
+    },
+  ],
   pada: [
     {
       word: "अथ",

@@ -1,1 +1,0 @@
-Read `CLAUDE.md` and `docs/PRODUCT_CONTEXT.md`. Invoke `principal-product-manager` to create or revise `docs/PRD.md`, audit scope/metrics/safety, and update `docs/TASKS.md`. Summarize decisions and stop for `/approve prd`. Arguments: $ARGUMENTS

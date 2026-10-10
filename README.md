@@ -10,7 +10,7 @@ A mobile-first Charaka Saṃhitā learning platform for listening, recitation pr
 - Cloudflare R2 for reference and private user audio
 - Human-QC-reviewed Sanskrit reference chant assets only
 
-Read `CLAUDE.md` for the multi-agent delivery constitution, `docs/PRD.md` for product requirements, and `docs/ARCHITECTURE.md` for detailed flows.
+See `docs/PRD.md` for product requirements and `docs/ARCHITECTURE.md` for detailed architecture and data flows.
 
 ## Local setup
 1. Copy `.env.example` to `.env` and configure PostgreSQL plus a 32+ character `AUTH_SECRET`.
