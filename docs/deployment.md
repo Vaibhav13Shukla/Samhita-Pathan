@@ -18,6 +18,16 @@ Deploy this application to a server-capable Next.js platform. **Do not deploy it
 
 Reference audio is produced and QC-approved separately from deployment. Follow `docs/audio-production.md`; never generate audio in a deployed route handler.
 
+## Free-tier Supabase + Vercel launch
+
+The app uses PostgreSQL through Drizzle, so it connects directly to Supabase Postgres. Do **not** add `NEXT_PUBLIC_SUPABASE_URL`, an anon key, or a service-role key: this release does not use the Supabase JavaScript client and those values would add unnecessary secret-management risk.
+
+1. Create a Supabase project, keep its database password private, and copy the **Transaction pooler** connection string from **Connect**. Replace `[YOUR-PASSWORD]` with the password you chose. Use this as `DATABASE_URL` in Vercel and locally for the next step.
+2. From a local shell in the repository, set `DATABASE_URL` only for that shell and run `npm run db:push`. This creates the required tables in your Supabase database; never run database schema changes as a Vercel build step.
+3. In Vercel, set `AUTH_SECRET` to a newly generated random value of at least 32 characters. Set `APP_URL` only after Vercel assigns the production URL, then redeploy once.
+4. Add `GEMINI_API_KEY` and `GEMINI_MODEL=gemini-2.5-flash`. Keep both server-only.
+5. R2 settings are optional until recording uploads/reference-audio delivery are enabled. Without them, the main study and explanation features work; recording upload returns a safe configuration error instead of exposing a secret.
+
 ## Rollback and recovery
 
 Keep database migrations backward compatible. Roll back the application image first; do not reverse data migrations without a tested backup and explicit change approval. Restore PostgreSQL from provider backups. Private recordings are deleted by the account-deletion flow; verify storage lifecycle rules separately and alert on deletion failures.

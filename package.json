@@ -8,6 +8,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
+    "db:push": "drizzle-kit push --config=drizzle.config.ts",
     "audio:validate": "tsx tools/audio-studio/validate-manifest.ts",
     "audio:import": "tsx tools/audio-studio/import-approved-assets.ts"
   },
