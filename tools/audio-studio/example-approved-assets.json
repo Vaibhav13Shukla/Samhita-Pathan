@@ -1,0 +1,20 @@
+{
+  "release": "charaka-audio-2026-10",
+  "assets": [
+    {
+      "stableKey": "charaka-sutra-1-1",
+      "meter": "anuṣṭubh",
+      "padas": ["अथातो दीर्घञ्जीवितीयमध्यायं व्याख्यास्यामः ।", "इति ह स्माह भगवानात्रेयः ॥"],
+      "source": "Add the approved source record before import",
+      "license": "Add the verified license before import",
+      "outputKey": "reference/charaka/sutrasthana/1-1/v1.wav",
+      "publicUrl": "https://cdn.example.com/reference/charaka/sutrasthana/1-1/v1.wav",
+      "qc": {
+        "reviewer": "Content reviewer",
+        "reviewedAt": "2026-10-10T00:00:00+00:00",
+        "checks": { "textMatch": true, "meter": true, "pronunciation": true, "padaBoundaries": true, "noImpersonation": true },
+        "notes": "Replace this example with a real reviewed asset."
+      }
+    }
+  ]
+}

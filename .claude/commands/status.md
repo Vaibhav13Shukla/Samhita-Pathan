@@ -1,0 +1,1 @@
+Read `docs/TASKS.md`, inspect git changes, and run the configured validation/test commands. Report phase gates, work in progress, blockers, test/build status, deployment readiness and the single highest-priority next action. Do not mark Done without evidence.

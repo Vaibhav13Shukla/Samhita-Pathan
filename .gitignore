@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+playwright-report/
+test-results/
+tools/vagdhenu-pipeline/shard.json
+tools/vagdhenu-pipeline/audio-import-manifest.json
+*.wav
+*.mp3

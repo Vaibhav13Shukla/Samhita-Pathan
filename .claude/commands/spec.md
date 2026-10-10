@@ -1,0 +1,1 @@
+Invoke Principal PM, Staff Designer, Architect, QA and Security perspectives to write one `docs/specs/<next-id>-$ARGUMENTS.md` from the template. Include frozen UX/API/data contracts, Gherkin happy/error/auth scenarios, test plan, rollout and out-of-scope. Do not implement. Stop for `/approve spec <id>`.
