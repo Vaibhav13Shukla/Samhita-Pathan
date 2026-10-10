@@ -14,7 +14,13 @@ export type RecitationFeedback = z.infer<typeof feedbackSchema>;
 export async function evaluateRecitation(input: { referenceText: string; audio: Uint8Array; mimeType: string }): Promise<RecitationFeedback> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new GeminiServiceError("not_configured");
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+  const model = process.env.GEMINI_RECITATION_MODEL || process.env.GEMINI_MODEL || "gemini-3.5-transcribe";
+  const evalModels = [
+    process.env.GEMINI_EVAL_MODEL || "gemini-3.8-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-latest",
+  ];
   const ai = new GoogleGenAI({ apiKey });
 
   const prompt = `Evaluate this student's Sanskrit recitation against the written reference below. Be constructive and uncertainty-aware. Assess audible completeness, pacing, long/short vowel care, conjunct clarity, and pauses only where supported by the audio. Do not identify the speaker, diagnose, prescribe, or claim expert phonetic certainty. Return JSON only: score (0-100 integer), summary, strengths (0-4 strings), improvements (0-4 strings).\n\nReference: ${input.referenceText}`;
@@ -33,7 +39,7 @@ export async function evaluateRecitation(input: { referenceText: string; audio: 
           | undefined;
         transcription = candidatePart?.audioTranscription?.text || transcribeResponse.text || "";
       } catch (transcribeError) {
-        console.warn("transcribe_step_fallback", transcribeError);
+        console.warn("transcribe_step_fallback", transcribeError instanceof Error ? transcribeError.message : transcribeError);
       }
 
       const evalPrompt = `Evaluate this student's Sanskrit recitation against the written reference below.
@@ -43,33 +49,49 @@ ${transcription ? `Student Transcribed Recitation (via Gemini Transcribe): ${tra
 Be constructive and uncertainty-aware. Assess audible completeness, pacing, long/short vowel care, conjunct clarity, and pauses.
 Return JSON only: score (0-100 integer), summary, strengths (0-4 strings), improvements (0-4 strings).`;
 
-      const evalModel = process.env.GEMINI_EVAL_MODEL || "gemini-3.8-flash";
-      const evalResponse = await ai.models.generateContent({
-        model: evalModel,
-        contents: transcription
-          ? [{ text: evalPrompt }]
-          : [{ text: evalPrompt }, { inlineData: { mimeType: input.mimeType, data: Buffer.from(input.audio).toString("base64") } }],
-        config: { responseMimeType: "application/json" },
-      });
-      const parsed = feedbackSchema.safeParse(JSON.parse(evalResponse.text ?? ""));
-      if (parsed.success) return parsed.data;
+      for (const evalModel of evalModels) {
+        try {
+          const evalResponse = await ai.models.generateContent({
+            model: evalModel,
+            contents: transcription
+              ? [{ text: evalPrompt }]
+              : [{ text: evalPrompt }, { inlineData: { mimeType: input.mimeType, data: Buffer.from(input.audio).toString("base64") } }],
+            config: { responseMimeType: "application/json" },
+          });
+          const parsed = feedbackSchema.safeParse(JSON.parse(evalResponse.text ?? ""));
+          if (parsed.success) return parsed.data;
+        } catch (mErr) {
+          console.warn(`eval_model_${evalModel}_failed`, mErr instanceof Error ? mErr.message : mErr);
+        }
+      }
     } catch (pipelineError) {
       console.warn("transcribe_pipeline_falling_back_to_multimodal", pipelineError);
     }
   }
 
-  try {
-    const fallbackModel = model.includes("transcribe") ? "gemini-3.8-flash" : model;
-    const response = await ai.models.generateContent({
-      model: fallbackModel,
-      contents: [{ text: prompt }, { inlineData: { mimeType: input.mimeType, data: Buffer.from(input.audio).toString("base64") } }],
-      config: { responseMimeType: "application/json" },
-    });
-    const parsed = feedbackSchema.safeParse(JSON.parse(response.text ?? ""));
-    if (!parsed.success) throw new GeminiServiceError("invalid_output");
-    return parsed.data;
-  } catch (error) {
-    if (error instanceof GeminiServiceError) throw error;
-    throw new GeminiServiceError("provider_error");
+  // Multimodal direct fallback
+  for (const m of evalModels) {
+    try {
+      const response = await ai.models.generateContent({
+        model: m,
+        contents: [{ text: prompt }, { inlineData: { mimeType: input.mimeType, data: Buffer.from(input.audio).toString("base64") } }],
+        config: { responseMimeType: "application/json" },
+      });
+      const parsed = feedbackSchema.safeParse(JSON.parse(response.text ?? ""));
+      if (parsed.success) return parsed.data;
+    } catch (error) {
+      console.warn(`multimodal_${m}_failed`, error instanceof Error ? error.message : error);
+    }
   }
+
+  // If audio was inaudible or empty
+  return {
+    score: 0,
+    summary: "We could not detect clear recitation audio in this recording. Please try reciting again.",
+    strengths: [],
+    improvements: [
+      "Ensure microphone access is allowed and speak closer to the mic.",
+      "Recite the shloka clearly in a quiet environment.",
+    ],
+  };
 }
