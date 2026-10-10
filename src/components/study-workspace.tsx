@@ -34,6 +34,7 @@ export function StudyWorkspace({ user }: { user: SafeUser | null }) {
   const [language, setLanguage] = useState<"en" | "hi" | "mr">(user?.preferredLanguage ?? "en");
   const [aiContent, setAiContent] = useState<AiContent | null>(null);
   const [aiState, setAiState] = useState<"idle" | "loading" | "error">("idle");
+  const [aiErrorMessage, setAiErrorMessage] = useState("");
   const [progressState, setProgressState] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   useEffect(() => {
@@ -86,12 +87,16 @@ export function StudyWorkspace({ user }: { user: SafeUser | null }) {
   }
   async function enrich() {
     setAiState("loading");
+    setAiErrorMessage("");
     try {
       const response = await fetch("/api/ai/explain", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ shlokaId: demoShloka.id, language }) });
-      if (!response.ok) throw new Error("unavailable");
-      const body = await response.json() as { content: AiContent };
+      const body = await response.json() as { content?: AiContent; error?: { message?: string } };
+      if (!response.ok || !body.content) throw new Error(body.error?.message || "AI enrichment is currently unavailable.");
       setAiContent(body.content); setAiState("idle");
-    } catch { setAiState("error"); }
+    } catch (error) {
+      setAiState("error");
+      setAiErrorMessage(error instanceof Error ? error.message : "AI enrichment is currently unavailable.");
+    }
   }
 
   return (
@@ -127,7 +132,7 @@ export function StudyWorkspace({ user }: { user: SafeUser | null }) {
           {active === "listen" && <ListenStep audio={audio} loading={audioLoading} />}
           {active === "recite" && <ReciteStep />}
           {active === "break-down" && <BreakdownStep />}
-          {active === "understand" && <UnderstandStep language={language} onLanguageChange={(value) => { setLanguage(value); setAiContent(null); setAiState("idle"); }} aiContent={aiContent} aiState={aiState} enrich={enrich} />}
+          {active === "understand" && <UnderstandStep language={language} onLanguageChange={(value) => { setLanguage(value); setAiContent(null); setAiState("idle"); setAiErrorMessage(""); }} aiContent={aiContent} aiState={aiState} aiErrorMessage={aiErrorMessage} enrich={enrich} />}
           {active === "visualize" && <VisualizeStep />}
           {active === "connect" && <ConnectStep />}
           {active === "quiz" && <QuizStep />}
@@ -242,7 +247,7 @@ function ReciteStep() {
 
 function BreakdownStep() { return <div><div className="step-copy"><p className="eyebrow">padaccheda · word by word</p><h2>see how the sentence opens.</h2><p>Tap or focus a word to connect the Sanskrit form with its working meaning.</p></div><div className="word-grid">{demoShloka.pada.map((item, index) => <article key={item.word}><span>{String(index + 1).padStart(2, "0")}</span><h3 lang="sa">{item.word}</h3><p>{item.meaning}</p></article>)}</div><div className="anvaya-card"><span className="marker-note">anvaya · prose order</span><p lang="sa">{demoShloka.anvaya}</p></div></div>; }
 
-function UnderstandStep({ language, onLanguageChange, aiContent, aiState, enrich }: { language: "en" | "hi" | "mr"; onLanguageChange: (value: "en" | "hi" | "mr") => void; aiContent: AiContent | null; aiState: "idle" | "loading" | "error"; enrich: () => void }) { const shown = aiContent?.summary ?? demoShloka.explanation; return <div className="understand-layout"><div className="step-copy"><p className="eyebrow">meaning in context</p><h2>what is this opening doing?</h2><div className="language-switch" aria-label="Explanation language" role="group">{(["en", "hi", "mr"] as const).map((item) => <button className={language === item ? "active" : ""} aria-pressed={language === item} onClick={() => onLanguageChange(item)} key={item}>{item === "en" ? "English" : item === "hi" ? "हिन्दी" : "मराठी"}</button>)}</div><p className="explanation-text" lang={language === "en" ? "en" : language}>{shown}</p>{aiContent && <ul className="idea-list">{aiContent.keyIdeas.map((idea) => <li key={idea}>{idea}</li>)}</ul>}<button className="text-link" onClick={enrich} disabled={aiState === "loading"}><Sparkles size={16} /> {aiState === "loading" ? "asking Gemini…" : "enrich this explanation with Gemini"}</button>{aiState === "error" && <p className="inline-error" role="alert" aria-live="assertive">AI enrichment is unavailable. The reviewed study note remains here.</p>}</div><aside className="source-note"><p className="eyebrow">reading note</p><blockquote>“Atha” is more than “now”; it signals an auspicious, prepared beginning.</blockquote><p>Keep AI assistance secondary to the source text and a qualified teacher.</p></aside></div>; }
+function UnderstandStep({ language, onLanguageChange, aiContent, aiState, aiErrorMessage, enrich }: { language: "en" | "hi" | "mr"; onLanguageChange: (value: "en" | "hi" | "mr") => void; aiContent: AiContent | null; aiState: "idle" | "loading" | "error"; aiErrorMessage?: string; enrich: () => void }) { const shown = aiContent?.summary ?? demoShloka.explanation; return <div className="understand-layout"><div className="step-copy"><p className="eyebrow">meaning in context</p><h2>what is this opening doing?</h2><div className="language-switch" aria-label="Explanation language" role="group">{(["en", "hi", "mr"] as const).map((item) => <button className={language === item ? "active" : ""} aria-pressed={language === item} onClick={() => onLanguageChange(item)} key={item}>{item === "en" ? "English" : item === "hi" ? "हिन्दी" : "मराठी"}</button>)}</div><p className="explanation-text" lang={language === "en" ? "en" : language}>{shown}</p>{aiContent && <ul className="idea-list">{aiContent.keyIdeas.map((idea) => <li key={idea}>{idea}</li>)}</ul>}<button className="text-link" onClick={enrich} disabled={aiState === "loading"}><Sparkles size={16} /> {aiState === "loading" ? "asking Gemini…" : "enrich this explanation with Gemini"}</button>{aiState === "error" && <p className="inline-error" role="alert" aria-live="assertive">{aiErrorMessage || "AI enrichment is unavailable. The reviewed study note remains here."}</p>}</div><aside className="source-note"><p className="eyebrow">reading note</p><blockquote>“Atha” is more than “now”; it signals an auspicious, prepared beginning.</blockquote><p>Keep AI assistance secondary to the source text and a qualified teacher.</p></aside></div>; }
 
 function VisualizeStep() { return <div><div className="step-copy"><p className="eyebrow">concept map</p><h2>from a prepared beginning to a clear purpose.</h2></div><div className="concept-map"><article><span>01</span><h3>अथ</h3><p>a prepared beginning</p></article><i>→</i><article><span>02</span><h3>अतः</h3><p>therefore, with continuity</p></article><i>→</i><article><span>03</span><h3>दीर्घञ्जीवित</h3><p>the inquiry’s purpose</p></article></div><p className="map-caption">A visual study aid—not a replacement for the verse or commentary.</p></div>; }
 

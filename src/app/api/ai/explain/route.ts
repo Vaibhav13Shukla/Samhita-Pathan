@@ -33,9 +33,13 @@ export async function POST(request: Request) {
     }
     if (error instanceof GeminiServiceError) {
       const unavailable = error.code === "not_configured";
-      return errorResponse(unavailable ? "AI_NOT_CONFIGURED" : "AI_UNAVAILABLE", unavailable ? "AI enrichment is not configured yet." : "The study assistant is taking a pause. Try again shortly.", 503);
+      const message = unavailable
+        ? "AI enrichment is not configured yet. Please set GEMINI_API_KEY in Vercel."
+        : (error.details || "The study assistant is taking a pause. Try again shortly.");
+      return errorResponse(unavailable ? "AI_NOT_CONFIGURED" : "AI_UNAVAILABLE", message, 503);
     }
-    console.error("explanation_failed", { error: error instanceof Error ? error.name : "unknown" });
-    return errorResponse("AI_UNAVAILABLE", "The study assistant is taking a pause. Try again shortly.", 503);
+    const message = error instanceof Error ? error.message : "The study assistant is taking a pause. Try again shortly.";
+    console.error("explanation_failed", message);
+    return errorResponse("AI_UNAVAILABLE", message, 503);
   }
 }
