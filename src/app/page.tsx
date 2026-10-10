@@ -20,8 +20,8 @@ export default function HomePage() {
           <span className="marker-note">a living study notebook for Ayurveda</span>
           <h1>every shloka,<br /><em>held a little longer.</em></h1>
           <p className="hero-lede">Hear authentic chant. Practice your recitation. Open up the Sanskrit. Understand why the verse matters—then remember it.</p>
-          <div className="hero-actions"><Link className="ink-button" href="/register">begin with Charaka <ArrowRight size={17} /></Link><Link className="text-link" href="/study">explore the learning loop <ArrowDownRight size={17} /></Link></div>
-          <p className="quiet-note">Start free · English, हिन्दी, मराठी · educational use only</p>
+          <div className="hero-actions"><Link className="ink-button" href="/study">begin with Charaka <ArrowRight size={17} /></Link><Link className="text-link" href="/study">explore the learning loop <ArrowDownRight size={17} /></Link></div>
+          <p className="quiet-note">Open access · English, हिन्दी, मराठी · educational use only</p>
         </div>
         <div className="hero-object" aria-label="Preview of the Samhita Pathan study notebook">
           <span className="sticker sticker-spark"><Sparkles size={24} /></span>
@@ -50,7 +50,7 @@ export default function HomePage() {
         <div className="reference-copy"><p className="eyebrow">Charaka Saṃhitā first</p><h2>small, curated, and useful from day one.</h2><p>We begin with a focused set of Sūtrasthāna verses—not a vast library of unchecked output. Each reference chant passes listening review before it appears in the player.</p><Link className="ink-button" href="/study">open the library <ArrowRight size={17} /></Link></div>
       </section>
 
-      <section className="cta-section page-shell"><span className="scribble-label">your next study session →</span><h2>read less like an exam is tomorrow.<br /><em>learn like the verse should stay.</em></h2><Link className="ink-button" href="/register">make your study space <ArrowRight size={17} /></Link></section>
-    </main><footer className="brand-footer"><div><strong>samhita pathan</strong><p>Where every shloka comes alive.</p></div><div className="footer-links"><Link href="/study">library</Link><Link href="/about">attributions</Link><Link href="/login">sign in</Link></div><span>Educational use only · not medical advice</span></footer></>
+      <section className="cta-section page-shell"><span className="scribble-label">your next study session →</span><h2>read less like an exam is tomorrow.<br /><em>learn like the verse should stay.</em></h2><Link className="ink-button" href="/study">open your study space <ArrowRight size={17} /></Link></section>
+    </main><footer className="brand-footer"><div><strong>samhita pathan</strong><p>Where every shloka comes alive.</p></div><div className="footer-links"><Link href="/study">library</Link><Link href="/about">about & attributions</Link></div><span>Educational use only · not medical advice</span></footer></>
   );
 }

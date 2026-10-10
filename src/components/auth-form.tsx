@@ -78,6 +78,11 @@ export function AuthForm({ mode }: AuthFormProps) {
         {mode === "login" ? "New to Samhita Pathan?" : "Already have a study space?"}{" "}
         <Link href={mode === "login" ? "/register" : "/login"}>{mode === "login" ? "Create an account" : "Sign in"}</Link>
       </p>
+      <div style={{ textAlign: "center", marginTop: "0.75rem" }}>
+        <Link className="text-link" href="/study">
+          or start studying right away without an account →
+        </Link>
+      </div>
     </form>
   );
 }

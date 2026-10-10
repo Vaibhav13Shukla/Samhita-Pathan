@@ -13,7 +13,7 @@ export function SiteHeader() {
         <Link href="/study">library</Link>
         <Link href="/about">about</Link>
       </nav>
-      <Link className="ink-button header-action" href="/register">
+      <Link className="ink-button header-action" href="/study">
         begin learning <MoveUpRight size={16} aria-hidden="true" />
       </Link>
     </header>
