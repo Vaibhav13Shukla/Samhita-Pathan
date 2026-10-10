@@ -25,13 +25,23 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!(file instanceof File)) return errorResponse("AUDIO_REQUIRED", "Attach a recording to continue.", 400);
     if (!AUDIO_TYPES.has(file.type) || file.size === 0 || file.size > MAX_BYTES) return errorResponse("INVALID_AUDIO", "Use a supported audio recording under 8 MB.", 400);
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const objectKey = await uploadPrivateRecitation({ userId: user.id, shlokaId: shloka.id, bytes, mimeType: file.type });
-    const [asset] = await db.insert(audioAssets).values({
-      shlokaId: shloka.id, userId: user.id, url: `r2://${process.env.R2_BUCKET_NAME}/${objectKey}`,
-      objectKey, type: "user", qcStatus: "pending",
-    }).returning({ id: audioAssets.id });
+    let audioAssetId: string | null = null;
+    try {
+      const objectKey = await uploadPrivateRecitation({ userId: user.id, shlokaId: shloka.id, bytes, mimeType: file.type });
+      const [asset] = await db.insert(audioAssets).values({
+        shlokaId: shloka.id, userId: user.id, url: `r2://${process.env.R2_BUCKET_NAME || "recitations"}/${objectKey}`,
+        objectKey, type: "user", qcStatus: "pending",
+      }).returning({ id: audioAssets.id });
+      audioAssetId = asset.id;
+    } catch (storageError) {
+      if (storageError instanceof StorageServiceError) {
+        console.warn("storage_not_configured_skipping_r2_persistence");
+      } else {
+        console.warn("audio_storage_failed", storageError);
+      }
+    }
     const [attempt] = await db.insert(recitationAttempts).values({
-      userId: user.id, shlokaId: shloka.id, audioAssetId: asset.id, status: "processing",
+      userId: user.id, shlokaId: shloka.id, audioAssetId, status: "processing",
     }).returning({ id: recitationAttempts.id, status: recitationAttempts.status });
 
     after(async () => {

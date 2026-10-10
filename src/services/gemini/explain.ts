@@ -16,7 +16,8 @@ export async function generateExplanation(input: {
 }): Promise<Explanation & { promptVersion: string; model: string }> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new GeminiServiceError("not_configured");
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const configuredModel = process.env.GEMINI_EXPLAIN_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const model = configuredModel.includes("transcribe") ? "gemini-2.5-flash" : configuredModel;
   const ai = new GoogleGenAI({ apiKey });
   const languageName = { en: "English", hi: "Hindi", mr: "Marathi" }[input.language];
   const controller = new AbortController();
