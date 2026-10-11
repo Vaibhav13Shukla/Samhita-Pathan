@@ -92,6 +92,21 @@ export function StudyWorkspace({ user }: { user: SafeUser | null }) {
           quizScore,
         }));
       }
+      if (user) {
+        const completedIndices = nextComplete.map((s) => steps.findIndex((step) => step.id === s) + 1);
+        const activeIndex = steps.findIndex((s) => s.id === nextActive) + 1;
+        const currentStep = Math.max(activeIndex, ...completedIndices, 1);
+        await fetch("/api/progress", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            shlokaId: demoShloka.id,
+            currentStep,
+            completedSteps: completedIndices,
+            quizScore,
+          }),
+        }).catch(() => undefined);
+      }
       setProgressState("saved");
     } catch { setProgressState("error"); }
   }
